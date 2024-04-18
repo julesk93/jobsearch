@@ -108,9 +108,47 @@ replacements = {
 # Find all <ul> elements within the job description
 uls = job_description.find_all('ul')
 
+options = ["Aufgaben", "Profil", "Benefits", "Jobbeschreibung", "Firmenprofil"]
+
+def get_selected_option(loop_number):
+    # Create a Toplevel window
+    dialog = tk.Toplevel(root)
+    dialog.title("Wähle Section aus für:{}".format(loop_number))
+
+    # # Define a list of options
+    # options = ["Aufgaben", "Profil", "Benefits", "Jobbeschreibung", "Firmenprofil"]
+
+    # Create a variable to store the selected option
+    selected_option = tk.StringVar(dialog)
+    selected_option.set(options[0])  # Set default option
+
+    # Create a dropdown menu (OptionMenu) for selecting an option
+    option_menu = tk.OptionMenu(dialog, selected_option, *options)
+    option_menu.pack()
+
+    def ok():
+        dialog.destroy()
+
+    # Create an "OK" button to confirm selection and close the dialog
+    ok_button = tk.Button(dialog, text="Auswählen", command=ok)
+    ok_button.pack()
+
+    # Set the size of the dialog window
+    dialog.geometry("700x400")  # Adjust the width and height as needed
+
+    # Wait for the dialog window to be closed
+    dialog.wait_window()
+
+    # Return the selected option
+    return selected_option.get()
+
+# Create a Tkinter root window
+root = tk.Tk()
+root.withdraw()  # Hide the root window
+
 # Extract list items from each <ul> and put them into separate lists
 list_of_lists = []
-for ul in uls:
+for index, ul in enumerate(uls, start=1):
     list_entries = [li.get_text(strip=True) for li in ul.find_all('li')]
     # Remove newline characters from list entries
     list_entries = [entry.replace('\n', '') for entry in list_entries]
@@ -118,24 +156,46 @@ for ul in uls:
     if ul.parent.find_previous_sibling().text.strip() != '':
         parent = ul.parent.find_previous_sibling().text.strip()
         keyword = uls[0].parent.find_previous_sibling().text.strip()
+        # Perform multiple replacements
+        for key, value in replacements.items():
+            if key in parent:
+                # Replace the entire original string with the corresponding replacement value
+                parent = value
+                # Break the loop after the first replacement is done
+                break
+        if parent not in options:
+            parent = get_selected_option(ul.text.strip().replace('\n', ' '))
     elif ul.parent.find_previous_sibling().find_previous_sibling().text.strip() != '':
         parent = ul.parent.find_previous_sibling().find_previous_sibling().text.strip()
         keyword = uls[0].parent.find_previous_sibling().find_previous_sibling().text.strip()
-    else:
+        # Perform multiple replacements
+        for key, value in replacements.items():
+            if key in parent:
+                # Replace the entire original string with the corresponding replacement value
+                parent = value
+                # Break the loop after the first replacement is done
+                break
+        if parent not in options:
+            parent = get_selected_option(ul.text.strip().replace('\n', ' '))
+    elif ul.parent.find_previous_sibling().find_previous_sibling().find_previous_sibling().text.strip() != '':
         parent = ul.parent.find_previous_sibling().find_previous_sibling().find_previous_sibling().text.strip()
         keyword = uls[0].parent.find_previous_sibling().find_previous_sibling().find_previous_sibling().text.strip()
-    # Perform multiple replacements
-    for key, value in replacements.items():
-        if key in parent:
-            # Replace the entire original string with the corresponding replacement value
-            new_parent = value
-            # Break the loop after the first replacement is done
-            break
+        # Perform multiple replacements
+        for key, value in replacements.items():
+            if key in parent:
+                # Replace the entire original string with the corresponding replacement value
+                parent = value
+                # Break the loop after the first replacement is done
+                break
+        if parent not in options:
+            parent = get_selected_option(ul.text.strip().replace('\n', ' '))
     else:
-        # If none of the keys are found in the original string, keep the original string unchanged
-        new_parent = parent
-    linkedin_dict[new_parent]= list_entries
-    #list_of_lists.append(list_entries)
+        parent = get_selected_option(ul.text.strip())
+    linkedin_dict[parent]= list_entries
+
+# Close the Tkinter root window
+root.destroy()
+
 
 ## Get job description => WORKS
 
