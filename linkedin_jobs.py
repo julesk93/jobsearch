@@ -4,6 +4,7 @@ from tkinter import filedialog
 from bs4 import BeautifulSoup
 import re
 import config
+from datetime import datetime, timedelta
 
 # Get the file path from the first command-line argument
 html_file_path = sys.argv[1]
@@ -17,6 +18,34 @@ soup = BeautifulSoup(html_content, 'html.parser')
 
 # Now you can use 'soup' to process the HTML content further
 print("HTML file parsed successfully.")
+
+### Create function to get future date starting from today and return it in the right format for Logseq's task management
+### if future date falls on a weekend, assign task to Monday instead => ONLY assign tasks on weekdays
+
+def get_date_logseq_format(days_from_today):
+    # Get today's date
+    today = datetime.now()
+    
+    # Calculate the date after delta_days
+    future_date = today + timedelta(days=days_from_today)
+
+    # Check if the future date falls on a weekend (Saturday or Sunday)
+    if future_date.weekday() >= 5:  # Saturday or Sunday
+        # Calculate the number of days to add to reach Monday
+        days_to_add = 7 - future_date.weekday()
+        future_date += timedelta(days=days_to_add)
+    
+    # Get the day name and format it
+    day_name = future_date.strftime('%a')
+    
+    # Format the date
+    formatted_date = future_date.strftime('%Y-%m-%d')
+    
+    # Combine the formatted date and day name
+    formatted_result = f'<{formatted_date} {day_name}>'
+    
+    return formatted_result
+
 
 #create dictionary to store results of webscrape
 linkedin_dict = {}
@@ -153,6 +182,25 @@ if "Benefits" not in linkedin_dict:
 if "Bestehende Kenntnisse" not in linkedin_dict:
     linkedin_dict["Bestehende Kenntnisse"] = "Keine"
 
+## To Do section
+    
+todos = f"""\
+	- TODO ergänze relevante Informationen für Stellenausschreibung "{linkedin_dict["title"]}" bei {linkedin_dict["company"]}
+	  SCHEDULED: {get_date_logseq_format(0)}
+		- insb. zu Bewerbungsprozess und Unterlagen
+	- TODO mache stichpunktartige Notizen zu Details in Stellenausschreibung "{linkedin_dict["title"]}" bei {linkedin_dict["company"]}
+	  SCHEDULED: {get_date_logseq_format(0)}
+	- TODO setze Anschreiben auf für "{linkedin_dict["title"]}" bei {linkedin_dict["company"]}
+	  SCHEDULED: {get_date_logseq_format(1)}
+	- TODO passe Lebenslauf an für "{linkedin_dict["title"]}" bei {linkedin_dict["company"]}
+	  SCHEDULED: {get_date_logseq_format(1)}
+	- TODO stelle Anschreiben fertig für "{linkedin_dict["title"]}" bei {linkedin_dict["company"]}
+	  SCHEDULED: {get_date_logseq_format(2)}
+	- TODO schicke Bewerbung ab für "{linkedin_dict["title"]}" bei {linkedin_dict["company"]}
+	  SCHEDULED: {get_date_logseq_format(2)}
+""" 
+
+
 ## Tags section
 
 tags = f"""\
@@ -175,11 +223,16 @@ missing_skills:: {linkedin_dict["Fehlende Kenntnisse"]}
 
 ## Assign Filename from Company and get folder path from config.py
 cleaned_title = re.sub(r'[^\w\s]', '', get_job_title_linkedin())
-output_filename = f"{config.logseq_path}joboffers_{cleaned_title}.md"
+output_filename = f"{config.logseq_path}joboffers___{cleaned_title}.md"
 
 with open(output_filename, 'w', encoding='utf-8') as markdown_file:
     # Write tags to markdown
     markdown_file.write(tags)
+    # Add to do section
+    markdown_file.write(f"- ## To Dos\n")
+    markdown_file.write("  {{renderer :todomaster}}")
+    markdown_file.write(f"\n")
+    markdown_file.write(todos)
     # Write Profil / Requirements to markdown
     markdown_file.write(f"- ## Jobbeschreibung\n")
     markdown_file.write(f"\t- {linkedin_dict["job_description"]}\n")
