@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import config
+from datetime import datetime, timedelta
 
 url = input("Please enter a URL: ")
 
@@ -109,20 +110,63 @@ def transform_date(date_string):
     transformed_date = "[[" + '-'.join(parts[::-1]) + "]]"
     return transformed_date
 
+
+def get_date_logseq_format(days_from_today):
+    # Get today's date
+    today = datetime.now()
+    
+    # Calculate the date after delta_days
+    future_date = today + timedelta(days=days_from_today)
+
+    # Check if the future date falls on a weekend (Saturday or Sunday)
+    if future_date.weekday() >= 5:  # Saturday or Sunday
+        # Calculate the number of days to add to reach Monday
+        days_to_add = 7 - future_date.weekday()
+        future_date += timedelta(days=days_to_add)
+    
+    # Get the day name and format it
+    day_name = future_date.strftime('%a')
+    
+    # Format the date
+    formatted_date = future_date.strftime('%Y-%m-%d')
+    
+    # Combine the formatted date and day name
+    formatted_result = f'<{formatted_date} {day_name}>'
+    
+    return formatted_result
+
+
 #Set output filename
 
-output_filename = f"{config.logseq_path}joboffers_{clean_filename()}.md"
+output_filename = f"{config.logseq_path}joboffers___{clean_filename()}.md"
 
 # Assign variables
 
 jobtyp = extract_job_criteria("Job-Typ")
 starting_date = extract_split("Arbeitsbeginn: ")
 company = extract_company()
+title = clean_filename()
 deadline = transform_date(extract_split("Job online bis"))
 ansprechpartnerin = extract_ansprechpartnerin()
 berufserfahrung = extract_split("Berufserfahrung: ")
 
-# Multiline string to write to markdown file
+## To Do section
+    
+todos = f"""\
+	- TODO ergänze relevante Informationen für Stellenausschreibung "{title}" bei {company}
+	  SCHEDULED: {get_date_logseq_format(0)}
+		- insb. zu Bewerbungsprozess und Unterlagen
+	- TODO mache stichpunktartige Notizen zu Details in Stellenausschreibung "{title}" bei {company}
+	  SCHEDULED: {get_date_logseq_format(0)}
+	- TODO setze Anschreiben auf für "{title}" bei {company}
+	  SCHEDULED: {get_date_logseq_format(1)}
+	- TODO passe Lebenslauf an für "{title}" bei {company}
+	  SCHEDULED: {get_date_logseq_format(1)}
+	- TODO stelle Anschreiben fertig für "{title}" bei {company}
+	  SCHEDULED: {get_date_logseq_format(2)}
+	- TODO schicke Bewerbung ab für "{title}" bei {company}
+	  SCHEDULED: {get_date_logseq_format(2)}
+""" 
 
 tags = f"""\
 type:: stellenausschreibung
@@ -150,6 +194,11 @@ bewerbungsprozess_list = extract_description("bewerbungsprozess")
 with open(output_filename, 'w', encoding='utf-8') as markdown_file:
     # Write tags to markdown
     markdown_file.write(tags)
+    # Add to do section
+    markdown_file.write(f"- ## To Dos\n")
+    markdown_file.write("  {{renderer :todomaster}}")
+    markdown_file.write(f"\n")
+    markdown_file.write(todos)
     # Write Profil / Requirements to markdown
     markdown_file.write(f"- ## Jobbeschreibung\n")
     for item in job_description_list:
