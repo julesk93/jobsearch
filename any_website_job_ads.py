@@ -4,6 +4,15 @@ import re
 from datetime import datetime, timedelta
 from selenium import webdriver
 import tkinter as tk
+from tkinter import simpledialog
+from tkinter import messagebox
+import sys
+from selenium import webdriver
+import time
+from selenium.webdriver.chrome.service import Service
+import os
+import json
+
 
 def get_url():
     url = entry.get()
@@ -43,21 +52,6 @@ url = root.url
 
 # # url = input("Please enter a URL: ")
 
-# Get html via Selenium
-driver = webdriver.Chrome()
-
-# Load the page
-driver.get(url)
-
-# Retrieve the fully rendered HTML
-html_content = driver.page_source
-
-# Close the webdriver
-driver.quit()
-
-# use BeautifulSoup to parse the HTML content
-soup = BeautifulSoup(html_content, 'html.parser')
-
 #create dict and dict entries
 job_posting = {}
 
@@ -79,6 +73,10 @@ job_posting["Company"] = ""
 job_posting["deadline"] = ""
 job_posting["Berufserfahrung"] = ""
 job_posting["Bewerbungsprozess"] = ""
+job_posting["pub_date"] = ""
+job_posting["job_type"] = ""
+job_posting["Bestehende Kenntnisse"] = ""
+job_posting["Fehlende Kenntnisse"] = ""
 
 # function to reverse list
 def reverse_list(input_list):
@@ -86,8 +84,58 @@ def reverse_list(input_list):
     input_list = [item for item in input_list if item != '']
     return input_list
 
-if "goodjobs" in url:
+#Define text replacements for section titles
 
+# Define replacements
+replacements = {
+    "Profil": "Profil",
+    "PROFIL": "Profil",
+    "Qualifications": "Profil",
+    "WIR LIEBEN": "Profil",
+    "Das bringst du mit": "Profil",
+    "DAS BRINGST DU MIT": "Profil",
+    "Sie bringen mit": "Profil",
+    "AUFGABEN": "Aufgaben",
+    "Aufgaben": "Aufgaben",
+    "Responsibilities": "Aufgaben",
+    "Arbeitsgebiet umfasst": "Aufgaben",
+    "Das erwartet dich bei uns": "Aufgaben",
+    "Deine Aufgaben": "Aufgaben",
+    "Deine Rolle": "Aufgaben",
+    "DU LIEBST": "Aufgaben",
+    "BENEFITS": "Benefits",
+    "Perks": "Benefits",
+    "Unser Angebot": "Benefits",
+    "Das bieten wir dir": "Benefits",
+    "Wir bieten": "Benefits",
+    "Benefits": "Benefits"
+}
+
+if "goodjobs" in url:
+    url_filename = url.replace("/", "")
+    file_name = f"{url_filename}.html"
+    if os.path.exists(file_name):
+        with open(file_name, "r") as file:
+            html_content = file.read()
+    else:
+    # Get html via Selenium
+        driver = webdriver.Chrome()
+
+        # Load the page
+        driver.get(url)
+
+        # Retrieve the fully rendered HTML
+        html_content = driver.page_source
+        # Open the file in write mode and write the HTML content
+        # Open the file in write mode and write the HTML content
+        url_filename = url.replace("/", "")
+        with open(f"{url_filename}.html", "w") as file:
+            file.write(html_content)
+
+        # Close the webdriver
+        driver.quit()
+    # use BeautifulSoup to parse the HTML content
+    soup = BeautifulSoup(html_content, 'html.parser')
     def extract_ansprechpartnerin():
         # Find the <div> element with class "col-span-full lg:col-span-8 lg:row-start-3 border-r-2"
         div_element = soup.find('div', class_='col-span-full lg:col-span-8 lg:row-start-3 border-r-2')
@@ -183,8 +231,238 @@ if "goodjobs" in url:
     job_posting["Benefits"] = get_lists("benefits")
     job_posting["Benefits_Beschreibung_Teil2"] = get_additional_description_from_("benefits")
 
+elif "linkedin" in url:
+    url_filename = url.replace("/", "")
+    file_name = f"{url_filename}.html"
+    if os.path.exists(file_name):
+        with open(file_name, "r") as file:
+            html_content = file.read()
+    else:
+        # Get website html via selenium, but need to have cookies
+        driver = webdriver.Chrome()
+
+        # Load cookies to a variable from a file
+        with open('cookies.json', 'r') as file:
+            cookies = json.load(file)
+
+        # Goto the same URL
+        driver.get(url)
+
+        # Set stored cookies to maintain the session
+        for cookie in cookies:
+            driver.add_cookie(cookie)
+        time.sleep(5)
+        driver.get(url)
+        time.sleep(5)
+
+        # # Retrieve the fully rendered HTML
+        html_content = driver.page_source
+        # Open the file in write mode and write the HTML content
+        url_filename = url.replace("/", "")
+        with open(f"{url_filename}.html", "w") as file:
+            file.write(html_content)
+
+    # use BeautifulSoup to parse the HTML content
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Get Job Title
+    def linkedin_job_title():
+        job_posting["title"] = soup.find('h1', class_='t-24 t-bold job-details-jobs-unified-top-card__job-title').text.strip()
+    # call function
+    linkedin_job_title()
+    # Scratch information from first job details div
+    # Get company name
+    def linkedin_job_details():
+        job_details_div = soup.find('div', {'class':'job-details-jobs-unified-top-card__primary-description-without-tagline mb2'})
+        job_details_2 = soup.find('li', {'class':'job-details-jobs-unified-top-card__job-insight job-details-jobs-unified-top-card__job-insight--highlight'})
+        #find out the job type (full-time, part-time, etc.)
+        try:
+            job_posting["job_type"] = job_details_2.find_all('span', {'class':'job-details-jobs-unified-top-card__job-insight-view-model-secondary'})[0].find('span', {'aria-hidden':'true'}).text.strip()
+        except AttributeError:
+            job_posting["job_type"] = ""
+        job_posting["Company"] = job_details_div.find('a').text.strip()
+        job_posting["pub_date"] = job_details_div.find(lambda tag: tag.name == 'span' and 'Vor' in tag.get_text()).text.strip()
+    # call function
+    linkedin_job_details()
+    # Get skills from LinkedIn Job Posting
+    def get_linkedin_skills():
+        qualifications_div = soup.find('div', id='how-you-match-card-container')
+        qualifications = qualifications_div.find_all('h3', {'class':'t-14 t-bold'})
+        for qual in qualifications:
+            key_qual = qual.find_next_sibling("a").text.replace(" und",",").replace("\n","").strip()
+            qual_stripped = qual.text.replace("Kenntnisse fehlen auf Ihrem Profil","Fehlende Kenntnisse").replace("Kenntnisse auf Ihrem Profil","Bestehende Kenntnisse").strip()[2:].lstrip()
+            job_posting[qual_stripped] = key_qual
+    # call function
+    get_linkedin_skills()
+
+    ### Get job description section
+    # function to get paragraphs BEFORE the list(ul) in a section
+    def get_paragraphs(ul_parent, parent_text):
+        liste = get_all_text_before_list(ul_parent)
+        cut_by = get_number_of_items(parent_text)
+        liste = liste[:cut_by]
+        liste.reverse()
+        return liste
+    def get_selected_option(loop_number):
+        # Create a Toplevel window
+        dialog = tk.Toplevel(root)
+        dialog.title("Wähle Section aus für:{}".format(loop_number))
+
+        # # Define a list of options
+        options = ["Aufgaben", "Profil", "Benefits", "Jobbeschreibung", "Firmenprofil","Bewerbungsprozess"]
+
+        # Create a variable to store the selected option
+        selected_option = tk.StringVar(dialog)
+        selected_option.set(options[0])  # Set default option
+
+        # Create a dropdown menu (OptionMenu) for selecting an option
+        option_menu = tk.OptionMenu(dialog, selected_option, *options)
+        option_menu.pack()
+
+        def ok():
+            dialog.destroy()
+
+        # Create an "OK" button to confirm selection and close the dialog
+        ok_button = tk.Button(dialog, text="Auswählen", command=ok)
+        ok_button.pack()
+
+        # Set the size of the dialog window
+        dialog.geometry("700x400")  # Adjust the width and height as needed
+
+        # Wait for the dialog window to be closed
+        dialog.wait_window()
+
+        # Return the selected option
+        return selected_option.get()
+    def ask_for_additional_paragraphs_before():
+        answer = messagebox.askyesno("Question","Are there additional paragraphs before the lists?")
+        return answer
+    def get_number_of_items(parent_text):
+        num_items = simpledialog.askinteger(f"Paragraphs before {parent_text}", "How many paragraphs do you want to keep?")
+        return num_items
+    # get text before list until section headline
+    def get_text_before_list(target_element,section_heading):
+        liste = []
+        # Get all previous siblings until the specified string is found
+        previous_siblings = list(target_element.find_previous_siblings())
+        # Print the previous siblings until the specific string is found
+        for sibling in previous_siblings:
+            # Check if the specific string is found in the sibling element
+            liste.append(sibling.text.strip())
+            filtered_list = list(filter(lambda x: x != '', liste))
+            filtered_list.reverse()
+            if section_heading.text.strip() in sibling.get_text():
+                break
+        return filtered_list
+    # get all text before list until section headline
+    def get_all_text_before_list(target_element):
+        liste = []
+        # Get all previous siblings until the specified string is found
+        previous_siblings = list(target_element.find_previous_siblings())
+        # Print the previous siblings until the specific string is found
+        for sibling in previous_siblings:
+            # Check if the specific string is found in the sibling element
+            liste.append(sibling.text.strip())
+        filtered_list = list(filter(lambda x: x != '', liste))
+        return filtered_list
+    def get_replacements(replace_element, replacements):
+        for key, value in replacements.items():
+            if key in replace_element:
+                # Replace the entire original string with the corresponding replacement value
+                replace_element = value
+                # Break the loop after the first replacement is done
+                break
+            return replace_element
+    def get_section_content():
+        job_description = soup.find('article', class_='jobs-description__container jobs-description__container--condensed')
+        # Find all <ul> elements within the job description
+        uls = job_description.find_all('ul')
+        options = ["Aufgaben", "Profil", "Benefits", "Jobbeschreibung", "Firmenprofil", "Bewerbungsablauf"]
+
+        # Extract list items from each <ul> and put them into separate lists
+        for index, ul in enumerate(uls, start=1):
+            list_entries = [li.get_text(strip=True) for li in ul.find_all('li')]
+            # Remove newline characters from list entries
+            list_entries = [entry.replace('\n', '') for entry in list_entries]
+            # Get section heading to assign lists to the right section => use if statements for different html structures
+            ### ul are nested inside spans, so siblings are on the parent level of uls
+            siblings_level = ul.parent
+            prev_sib_parent = ul.parent.previous_sibling
+            if prev_sib_parent is not None:
+                prev_sib_grandparent = ul.parent.previous_sibling.previous_sibling
+            else: prev_sib_grandparent = None
+            if prev_sib_grandparent is not None:
+                prev_sib_greatgrandparent = ul.parent.previous_sibling.previous_sibling.previous_sibling
+            else: prev_sib_greatgrandparent = None
+            if prev_sib_parent.text.strip() != '':
+                parent = prev_sib_parent
+                parent_text = prev_sib_parent.text.strip()
+                keyword = uls[0].parent.find_previous_sibling().text.strip()
+                # Perform multiple replacements
+                parent_text = get_replacements(parent_text, replacements)
+                if parent_text not in options:
+                    parent_text = get_selected_option(ul.text.strip().replace('\n', ' '))
+                if additional_paragraphs_before:
+                    section = f'{parent_text}_Beschreibung'
+                    job_posting[section] = get_paragraphs(ul.parent, parent_text)
+            elif prev_sib_grandparent.text.strip() != '':
+                parent = prev_sib_grandparent
+                parent_text = prev_sib_grandparent.text.strip()
+                keyword = uls[0].parent.find_previous_sibling().find_previous_sibling().text.strip()
+                # Perform multiple replacements
+                parent_text = get_replacements(parent_text, replacements)
+                if parent_text not in options:
+                    parent_text = get_selected_option(ul.text.strip().replace('\n', ' '))
+                if additional_paragraphs_before:
+                    section = f'{parent_text}_Beschreibung'
+                    job_posting[section] = get_paragraphs(ul.parent, parent_text)
+            elif prev_sib_greatgrandparent.text.strip() != '':
+                parent = prev_sib_greatgrandparent
+                parent_text = prev_sib_greatgrandparent.text.strip()
+                keyword = uls[0].parent.find_previous_sibling().find_previous_sibling().find_previous_sibling().text.strip()
+                # Perform multiple replacements
+                parent_text = get_replacements(parent_text, replacements)
+                if parent_text not in options:
+                    parent_text = get_selected_option(ul.text.strip().replace('\n', ' '))
+                if additional_paragraphs_before:
+                    section = f'{parent_text}_Beschreibung'
+                    job_posting[section] = get_paragraphs(ul.parent, parent_text)
+            else:
+                parent_text = get_selected_option(ul.text.strip())
+                if additional_paragraphs_before:
+                    section = f'{parent_text}_Beschreibung'
+                    job_posting[section] = get_paragraphs(ul.parent, parent_text)
+                    liste = get_all_text_before_list(ul.parent)
+            job_posting[parent_text]= list_entries
+
+
+    # Create a Tkinter root window
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+
+    additional_paragraphs_before = ask_for_additional_paragraphs_before()
+    get_section_content()
+
+    # Close the Tkinter root window
+    root.destroy()
+
+
 # for all other websites
 else: 
+    # Get html via Selenium
+    driver = webdriver.Chrome()
+
+    # Load the page
+    driver.get(url)
+
+    # Retrieve the fully rendered HTML
+    html_content = driver.page_source
+
+    # Close the webdriver
+    driver.quit()
+
+    # use BeautifulSoup to parse the HTML content
+    soup = BeautifulSoup(html_content, 'html.parser')
     # Get all list elements
     uls = soup.find_all('ul')
 
@@ -198,31 +476,6 @@ else:
 
     # Find all <ul> elements that meet the filtering criteria
     uls = soup.find_all(filter_ul)
-
-    #Define text replacements for section titles
-
-    # Define replacements
-    replacements = {
-        "Profil": "Profil",
-        "PROFIL": "Profil",
-        "Qualifications": "Profil",
-        "WIR LIEBEN": "Profil",
-        "Das bringst du mit": "Profil",
-        "Sie bringen mit": "Profil",
-        "AUFGABEN": "Aufgaben",
-        "Aufgaben": "Aufgaben",
-        "Responsibilities": "Aufgaben",
-        "Arbeitsgebiet umfasst": "Aufgaben",
-        "Das erwartet dich bei uns": "Aufgaben",
-        "Deine Aufgaben": "Aufgaben",
-        "Deine Aufgaben": "Aufgaben",
-        "DU LIEBST": "Aufgaben",
-        "BENEFITS": "Benefits",
-        "Perks": "Benefits",
-        "Das bieten wir dir": "Benefits",
-        "Wir bieten": "Benefits",
-        "Benefits": "Benefits"
-    }
 
 
     # Function to get section headline and content from target item
@@ -344,19 +597,8 @@ else:
     if elements_with_keyword != []:
         job_posting["kennziffer"] = elements_with_keyword[0]
 
-# Get Job Title
-job_posting["title"] = soup.find('h1').text.strip()
-
-# Assign filename
-def clean_filename():
-    # Extract titles
-    title = job_posting["title"] if job_posting["title"] != "" else "No title found"
-    title.strip()
-    cleaned_title = re.sub(r'[^\w\s]', '', title.strip())
-    cleaned_title = cleaned_title.replace('GoodJobs', '').strip()
-    return cleaned_title
-
-output_filename = f"job_ad___{clean_filename()}.md"
+    # Get Job Title
+    job_posting["title"] = soup.find('h1').text.strip()
 
 ### Write markdown
 
@@ -365,7 +607,7 @@ output_filename = f"job_ad___{clean_filename()}.md"
 tags = f"""\
 type:: stellenausschreibung
 company:: {job_posting["Company"]}
-Teilzeit:: offen
+Teilzeit:: {job_posting["job_type"]}
 status:: offen
 starting_date:: offen
 kommentar:: offen
@@ -374,8 +616,7 @@ ansprechpartner:: {job_posting["Ansprechpartnerin"]}
 website:: [Stellenausschreibung]({url})
 berufserfahrung:: {job_posting["Berufserfahrung"]}
 kennziffer:: {job_posting["kennziffer"]}
-publication:: offen
-
+publication:: {job_posting["pub_date"]}
 """
 
 ### create markdown section for Logseq todos
@@ -437,10 +678,23 @@ check_for_none(job_posting)
 
 
 ## Write everything to markdown file
+# Assign filename
+def clean_filename():
+    # Extract titles
+    title = job_posting["title"] if job_posting["title"] != "" else "No title found"
+    title.strip()
+    cleaned_title = re.sub(r'[^\w\s]', '', title.strip())
+    cleaned_title = cleaned_title.replace('GoodJobs', '').strip()
+    return cleaned_title
+
+output_filename = f"{config.logseq_path}job_ad___{clean_filename()}.md"
 
 with open(output_filename, 'w', encoding='utf-8') as markdown_file:
     # Write tags to markdown
     markdown_file.write(tags)
+    if job_posting["Bestehende Kenntnisse"]: markdown_file.write(f"matching_skills:: {job_posting["Bestehende Kenntnisse"]}")
+    if job_posting["Fehlende Kenntnisse"]: markdown_file.write(f"missing_skills:: {job_posting["Fehlende Kenntnisse"]}")
+    markdown_file.write(f"\n")
     # Add to do section
     markdown_file.write(f"- ## To Dos\n")
     markdown_file.write("  {{renderer :todomaster}}")
@@ -466,10 +720,14 @@ with open(output_filename, 'w', encoding='utf-8') as markdown_file:
     markdown_file.write(f"- ## Benefits\n")
     for item in job_posting["Benefits_Beschreibung"]:
         markdown_file.write(f"\t- {item}\n")
-    for item in job_posting["Benefits"]:
-        markdown_file.write(f"\t- {item}\n")
+    if job_posting["Benefits"] != []
+        for item in job_posting["Benefits"]:
+            markdown_file.write(f"\t- {item}\n")
+    else: markdown_file.write(f"\t- Nicht erfasst\n")
     for item in job_posting["Benefits_Beschreibung_Teil2"]:
         markdown_file.write(f"\t- {item}\n")
     markdown_file.write(f"- ## Bewerbungsprozess\n")
-    for item in job_posting["Bewerbungsprozess"]:
-        markdown_file.write(f"\t- {item}\n")
+    if job_posting["Bewerbungsprozess"] != []
+        for item in job_posting["Bewerbungsprozess"]:
+            markdown_file.write(f"\t- {item}\n")
+    else: markdown_file.write(f"\t- Nicht erfasst\n")
