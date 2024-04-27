@@ -12,45 +12,49 @@ import time
 from selenium.webdriver.chrome.service import Service
 import os
 import json
+import config
 
 
-def get_url():
-    url = entry.get()
-    print("URL entered:", url)
-    root.url = url  # Store the URL in the root window object
-    root.destroy()  # Close the window after getting the URL
+# def get_url():
+#     url = entry.get()
+#     print("URL entered:", url)
+#     root.url = url  # Store the URL in the root window object
+#     root.destroy()  # Close the window after getting the URL
 
-# Function to process the URL
-def process_url():
-    url = root.url  # Get the URL from the root window object
-    print("Processing URL:", url)
-    # Your code to process the URL goes here
+# # Function to process the URL
+# def process_url():
+#     url = root.url  # Get the URL from the root window object
+#     print("Processing URL:", url)
+#     # Your code to process the URL goes here
 
-# Create the main window
-root = tk.Tk()
-root.title("URL Input")
+# # Create the main window
+# root = tk.Tk()
+# root.title("URL Input")
 
-# Create a label
-label = tk.Label(root, text="Enter URL:")
-label.pack()
+# # Create a label
+# label = tk.Label(root, text="Enter URL:")
+# label.pack()
 
-# Create an entry widget
-entry = tk.Entry(root, width=40)
-entry.pack()
+# # Create an entry widget
+# entry = tk.Entry(root, width=40)
+# entry.pack()
 
-# Create a button to get the URL
-button = tk.Button(root, text="Get URL", command=get_url)
-button.pack()
+# # Create a button to get the URL
+# button = tk.Button(root, text="Get URL", command=get_url)
+# button.pack()
 
-# Run the main loop
-root.mainloop()
+# # Run the main loop
+# root.mainloop()
 
-# Process the URL after the window is closed
-process_url()
+# # Process the URL after the window is closed
+# process_url()
 
-url = root.url
+# url = root.url
 
-# # url = input("Please enter a URL: ")
+### Get URL passed by quick action shell command
+
+url = sys.argv[1]
+print(url)
 
 #create dict and dict entries
 job_posting = {}
@@ -95,12 +99,14 @@ replacements = {
     "Das bringst du mit": "Profil",
     "DAS BRINGST DU MIT": "Profil",
     "Sie bringen mit": "Profil",
+    "Dein Profil": "Profil",
     "AUFGABEN": "Aufgaben",
     "Aufgaben": "Aufgaben",
     "Responsibilities": "Aufgaben",
     "Arbeitsgebiet umfasst": "Aufgaben",
     "Das erwartet dich bei uns": "Aufgaben",
     "Deine Aufgaben": "Aufgaben",
+    "Deine Aufgaben sind": "Aufgaben",
     "Deine Rolle": "Aufgaben",
     "DU LIEBST": "Aufgaben",
     "BENEFITS": "Benefits",
@@ -113,7 +119,7 @@ replacements = {
 
 if "goodjobs" in url:
     url_filename = url.replace("/", "")
-    file_name = f"{url_filename}.html"
+    file_name = f"/Users/juliankilchling/code/julesk93/jobsearch/saved_job_ads/{url_filename}.html"
     if os.path.exists(file_name):
         with open(file_name, "r") as file:
             html_content = file.read()
@@ -129,7 +135,7 @@ if "goodjobs" in url:
         # Open the file in write mode and write the HTML content
         # Open the file in write mode and write the HTML content
         url_filename = url.replace("/", "")
-        with open(f"{url_filename}.html", "w") as file:
+        with open(f"/Users/juliankilchling/code/julesk93/jobsearch/saved_job_ads/{url_filename}.html", "w") as file:
             file.write(html_content)
 
         # Close the webdriver
@@ -233,7 +239,7 @@ if "goodjobs" in url:
 
 elif "linkedin" in url:
     url_filename = url.replace("/", "")
-    file_name = f"{url_filename}.html"
+    file_name = f"/Users/juliankilchling/code/julesk93/jobsearch/saved_job_ads/{url_filename}.html"
     if os.path.exists(file_name):
         with open(file_name, "r") as file:
             html_content = file.read()
@@ -242,7 +248,7 @@ elif "linkedin" in url:
         driver = webdriver.Chrome()
 
         # Load cookies to a variable from a file
-        with open('cookies.json', 'r') as file:
+        with open('/Users/juliankilchling/code/julesk93/jobsearch/cookies.json', 'r') as file:
             cookies = json.load(file)
 
         # Goto the same URL
@@ -259,7 +265,7 @@ elif "linkedin" in url:
         html_content = driver.page_source
         # Open the file in write mode and write the HTML content
         url_filename = url.replace("/", "")
-        with open(f"{url_filename}.html", "w") as file:
+        with open(f"/Users/juliankilchling/code/julesk93/jobsearch/saved_job_ads/{url_filename}.html", "w") as file:
             file.write(html_content)
 
     # use BeautifulSoup to parse the HTML content
@@ -365,19 +371,18 @@ elif "linkedin" in url:
             liste.append(sibling.text.strip())
         filtered_list = list(filter(lambda x: x != '', liste))
         return filtered_list
-    def get_replacements(replace_element, replacements):
-        for key, value in replacements.items():
+    def get_replacements(replace_element, replacements_dict):
+        for key in replacements_dict:
             if key in replace_element:
                 # Replace the entire original string with the corresponding replacement value
-                replace_element = value
-                # Break the loop after the first replacement is done
+                return replacements_dict[key]
                 break
-            return replace_element
+        return replace_element
     def get_section_content():
         job_description = soup.find('article', class_='jobs-description__container jobs-description__container--condensed')
         # Find all <ul> elements within the job description
         uls = job_description.find_all('ul')
-        options = ["Aufgaben", "Profil", "Benefits", "Jobbeschreibung", "Firmenprofil", "Bewerbungsablauf"]
+        options = ["Aufgaben", "Profil", "Benefits", "Jobbeschreibung", "Firmenprofil", "Bewerbungsprozess"]
 
         # Extract list items from each <ul> and put them into separate lists
         for index, ul in enumerate(uls, start=1):
@@ -400,40 +405,26 @@ elif "linkedin" in url:
                 keyword = uls[0].parent.find_previous_sibling().text.strip()
                 # Perform multiple replacements
                 parent_text = get_replacements(parent_text, replacements)
-                if parent_text not in options:
-                    parent_text = get_selected_option(ul.text.strip().replace('\n', ' '))
-                if additional_paragraphs_before:
-                    section = f'{parent_text}_Beschreibung'
-                    job_posting[section] = get_paragraphs(ul.parent, parent_text)
             elif prev_sib_grandparent.text.strip() != '':
                 parent = prev_sib_grandparent
                 parent_text = prev_sib_grandparent.text.strip()
                 keyword = uls[0].parent.find_previous_sibling().find_previous_sibling().text.strip()
                 # Perform multiple replacements
                 parent_text = get_replacements(parent_text, replacements)
-                if parent_text not in options:
-                    parent_text = get_selected_option(ul.text.strip().replace('\n', ' '))
-                if additional_paragraphs_before:
-                    section = f'{parent_text}_Beschreibung'
-                    job_posting[section] = get_paragraphs(ul.parent, parent_text)
             elif prev_sib_greatgrandparent.text.strip() != '':
                 parent = prev_sib_greatgrandparent
                 parent_text = prev_sib_greatgrandparent.text.strip()
                 keyword = uls[0].parent.find_previous_sibling().find_previous_sibling().find_previous_sibling().text.strip()
                 # Perform multiple replacements
                 parent_text = get_replacements(parent_text, replacements)
-                if parent_text not in options:
-                    parent_text = get_selected_option(ul.text.strip().replace('\n', ' '))
-                if additional_paragraphs_before:
-                    section = f'{parent_text}_Beschreibung'
-                    job_posting[section] = get_paragraphs(ul.parent, parent_text)
             else:
                 parent_text = get_selected_option(ul.text.strip())
-                if additional_paragraphs_before:
-                    section = f'{parent_text}_Beschreibung'
-                    job_posting[section] = get_paragraphs(ul.parent, parent_text)
-                    liste = get_all_text_before_list(ul.parent)
+            if parent_text not in options:
+                parent_text = get_selected_option(ul.text.strip().replace('\n', ' '))
             job_posting[parent_text]= list_entries
+            if additional_paragraphs_before:
+                section = f'{parent_text}_Beschreibung'
+                job_posting[section] = get_paragraphs(ul.parent, parent_text)  
 
 
     # Create a Tkinter root window
@@ -514,7 +505,7 @@ else:
         else: prev_sib_greatgrandparent = None
         if prev_sib_parent is not None and prev_sib_parent.text != '':
                 parent = prev_sib_parent.text.strip()
-                keyword = uls[0].parent.find_previous_sibling().text.strip()
+                #keyword = uls[0].parent.find_previous_sibling().text.strip()
                 # Perform multiple replacements
                 for key, value in replacements.items():
                     if key in parent:
@@ -526,7 +517,7 @@ else:
             #     parent = get_selected_option(ul.text.strip().replace('\n', ' '))
         elif prev_sib_grandparent is not None and prev_sib_grandparent.text != '':
             parent = prev_sib_grandparent.text.strip()
-            keyword = uls[0].prev_sib_grandparent.text.strip()
+            #keyword = uls[0].prev_sib_grandparent.text.strip()
             # Perform multiple replacements
             for key, value in replacements.items():
                 if key in parent:
@@ -538,7 +529,7 @@ else:
             #     parent = get_selected_option(ul.text.strip().replace('\n', ' '))
         elif prev_sib_greatgrandparent is not None and prev_sib_greatgrandparent.text != '':
             parent = prev_sib_greatgrandparent.text.strip()
-            keyword = uls[0].prev_sib_greatgrandparent.text.strip()
+            #keyword = uls[0].prev_sib_greatgrandparent.text.strip()
             # Perform multiple replacements
             for key, value in replacements.items():
                 if key in parent:
@@ -668,6 +659,51 @@ todos = f"""\
 	  SCHEDULED: {get_date_logseq_format(2)}
 """
 
+bewerbungsunterladen = """
+	- ### Bewerbungsunterlagen
+        - #### [Lebenslauf](Curriculum Vitae) or [Lebenslauf on Enhancv](https://app.enhancv.com/)
+		- query-sort-by:: date
+		  query-table:: true
+		  query-sort-desc:: true
+		  query-properties:: [:block :date :institution :type :relevanz]
+		  collapsed:: true
+		  #+BEGIN_QUERY
+		  {
+		  :title [:h4 "Hohe Relevanz"]
+		  :query (and (property :tags "Job Search") (property :relevanz "5") (not (property :type "besprechung")) (not (property :tags "CV")))
+		  :table-view? true
+		  :collapsed? true
+		  }
+		  
+		  #+END_QUERY
+		- query-sort-by:: date
+		  query-table:: true
+		  query-sort-desc:: true
+		  query-properties:: [:block :type :date :institution :relevanz]
+		  collapsed:: true
+		  #+BEGIN_QUERY
+		  {
+		  :title [:h4 "Mittlere Relevanz"]
+		  :query (and (property :tags "Job Search") (or (property :relevanz "4")(property :relevanz "3")) (not (property :type "besprechung")) (not (property :tags "CV")))
+		  :table-view? true
+		  :collapsed? true
+		  }
+		  #+END_QUERY
+		- query-sort-by:: date
+		  query-table:: true
+		  query-sort-desc:: true
+		  query-properties:: [:block :type :institution :date :relevanz]
+		  collapsed:: true
+		  #+BEGIN_QUERY
+		  {
+		  :title [:h4 "Niedrige Relevanz"]
+		  :query (and (property :tags "Job Search") (or (property :relevanz "2")(property :relevanz "1")) (not (property :type "besprechung")) (not (property :tags "CV")))
+		  :table-view? true
+		  :collapsed? true
+		  }
+		  #+END_QUERY
+"""
+
 ### Quality check
 #replace None values in dict with empty lists
 def check_for_none(dict):
@@ -688,11 +724,13 @@ def clean_filename():
     return cleaned_title
 
 output_filename = f"{config.logseq_path}job_ad___{clean_filename()}.md"
+#output_filename = f"/Users/juliankilchling/code/julesk93/jobsearch/job_ad___{clean_filename()}.md"
 
 with open(output_filename, 'w', encoding='utf-8') as markdown_file:
     # Write tags to markdown
     markdown_file.write(tags)
-    if job_posting["Bestehende Kenntnisse"]: markdown_file.write(f"matching_skills:: {job_posting["Bestehende Kenntnisse"]}")
+    markdown_file.write(f"agenda-color:: yellow \n")
+    if job_posting["Bestehende Kenntnisse"]: markdown_file.write(f"matching_skills:: {job_posting["Bestehende Kenntnisse"]}\n")
     if job_posting["Fehlende Kenntnisse"]: markdown_file.write(f"missing_skills:: {job_posting["Fehlende Kenntnisse"]}")
     markdown_file.write(f"\n")
     # Add to do section
@@ -700,6 +738,16 @@ with open(output_filename, 'w', encoding='utf-8') as markdown_file:
     markdown_file.write("  {{renderer :todomaster}}")
     markdown_file.write(f"\n")
     markdown_file.write(todos)
+    # Write Profil / Requirements to markdown
+    markdown_file.write(f"- ## Jobbeschreibung\n")
+    markdown_file.write(f"\t- {job_posting["Jobbeschreibung"]}\n")
+    markdown_file.write(f"- ## Profil\n")
+    for item in job_posting["Profil_Beschreibung"]:
+        markdown_file.write(f"\t- {item}\n")
+    for item in job_posting["Profil"]:
+        markdown_file.write(f"\t- {item}\n")
+    for item in job_posting["Profil_Beschreibung_Teil2"]:
+        markdown_file.write(f"\t- {item}\n")
     # Write Tasks / Aufgaben to markdown
     markdown_file.write(f"- ## Aufgaben\n")
     for item in job_posting["Aufgaben_Beschreibung"]:
@@ -708,26 +756,19 @@ with open(output_filename, 'w', encoding='utf-8') as markdown_file:
         markdown_file.write(f"\t- {item}\n")
     for item in job_posting["Aufgaben_Beschreibung_Teil2"]:
         markdown_file.write(f"\t- {item}\n")
-    # Write Profil / Requirements to markdown
-    markdown_file.write(f"- ## Jobbeschreibung\n")
-    for item in job_posting["Profil_Beschreibung"]:
-        markdown_file.write(f"\t- {item}\n")
-    for item in job_posting["Profil"]:
-        markdown_file.write(f"\t- {item}\n")
-    for item in job_posting["Profil_Beschreibung_Teil2"]:
-        markdown_file.write(f"\t- {item}\n")
     # Write Benefits to markdown
     markdown_file.write(f"- ## Benefits\n")
     for item in job_posting["Benefits_Beschreibung"]:
         markdown_file.write(f"\t- {item}\n")
-    if job_posting["Benefits"] != []
+    if job_posting["Benefits"] != []:
         for item in job_posting["Benefits"]:
             markdown_file.write(f"\t- {item}\n")
     else: markdown_file.write(f"\t- Nicht erfasst\n")
     for item in job_posting["Benefits_Beschreibung_Teil2"]:
         markdown_file.write(f"\t- {item}\n")
     markdown_file.write(f"- ## Bewerbungsprozess\n")
-    if job_posting["Bewerbungsprozess"] != []
+    if job_posting["Bewerbungsprozess"] != []:
         for item in job_posting["Bewerbungsprozess"]:
             markdown_file.write(f"\t- {item}\n")
     else: markdown_file.write(f"\t- Nicht erfasst\n")
+    markdown_file.write(bewerbungsunterladen)
