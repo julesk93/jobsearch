@@ -1,9 +1,11 @@
 /.DS_Store
 /.venv
-/Pricing  Marketing Data Analyst mwd.md
 /__pycache__
 /config.py
 /chromedriver-mac-arm64
 cookies.json
 *.html
 *.md
+*.log
+.env
+saved_job_ads
