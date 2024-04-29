@@ -119,7 +119,7 @@ replacements = {
 
 if "goodjobs" in url:
     url_filename = url.replace("/", "")
-    file_name = f"/Users/juliankilchling/code/julesk93/jobsearch/saved_job_ads/{url_filename}.html"
+    file_name = f"{config.saved_job_ads}{url_filename}.html"
     if os.path.exists(file_name):
         with open(file_name, "r") as file:
             html_content = file.read()
@@ -133,9 +133,8 @@ if "goodjobs" in url:
         # Retrieve the fully rendered HTML
         html_content = driver.page_source
         # Open the file in write mode and write the HTML content
-        # Open the file in write mode and write the HTML content
         url_filename = url.replace("/", "")
-        with open(f"/Users/juliankilchling/code/julesk93/jobsearch/saved_job_ads/{url_filename}.html", "w") as file:
+        with open(f"{config.saved_job_ads}{url_filename}.html", "w") as file:
             file.write(html_content)
 
         # Close the webdriver
@@ -239,7 +238,7 @@ if "goodjobs" in url:
 
 elif "linkedin" in url:
     url_filename = url.replace("/", "")
-    file_name = f"/Users/juliankilchling/code/julesk93/jobsearch/saved_job_ads/{url_filename}.html"
+    file_name = f"{config.saved_job_ads}{url_filename}.html"
     if os.path.exists(file_name):
         with open(file_name, "r") as file:
             html_content = file.read()
@@ -248,7 +247,7 @@ elif "linkedin" in url:
         driver = webdriver.Chrome()
 
         # Load cookies to a variable from a file
-        with open('/Users/juliankilchling/code/julesk93/jobsearch/cookies.json', 'r') as file:
+        with open(config.selenium_cookies, 'r') as file:
             cookies = json.load(file)
 
         # Goto the same URL
@@ -265,8 +264,11 @@ elif "linkedin" in url:
         html_content = driver.page_source
         # Open the file in write mode and write the HTML content
         url_filename = url.replace("/", "")
-        with open(f"/Users/juliankilchling/code/julesk93/jobsearch/saved_job_ads/{url_filename}.html", "w") as file:
+        with open(f"{config.saved_job_ads}{url_filename}.html", "w") as file:
             file.write(html_content)
+        
+        # Close the WebDriver when done
+        driver.quit()
 
     # use BeautifulSoup to parse the HTML content
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -724,7 +726,6 @@ def clean_filename():
     return cleaned_title
 
 output_filename = f"{config.logseq_path}job_ad___{clean_filename()}.md"
-#output_filename = f"/Users/juliankilchling/code/julesk93/jobsearch/job_ad___{clean_filename()}.md"
 
 with open(output_filename, 'w', encoding='utf-8') as markdown_file:
     # Write tags to markdown
@@ -739,33 +740,34 @@ with open(output_filename, 'w', encoding='utf-8') as markdown_file:
     markdown_file.write(f"\n")
     markdown_file.write(todos)
     # Write Profil / Requirements to markdown
-    markdown_file.write(f"- ## Jobbeschreibung\n")
-    markdown_file.write(f"\t- {job_posting["Jobbeschreibung"]}\n")
-    markdown_file.write(f"- ## Profil\n")
+    markdown_file.write(f"- # Stellenausschreibung\n")
+    markdown_file.write(f"\t- ## Jobbeschreibung\n")
+    markdown_file.write(f"\t\t- {job_posting["Jobbeschreibung"]}\n")
+    markdown_file.write(f"\t- ## Profil\n")
     for item in job_posting["Profil_Beschreibung"]:
-        markdown_file.write(f"\t- {item}\n")
+        markdown_file.write(f"\t\t- {item}\n")
     for item in job_posting["Profil"]:
-        markdown_file.write(f"\t- {item}\n")
+        markdown_file.write(f"\t\t- {item}\n")
     for item in job_posting["Profil_Beschreibung_Teil2"]:
-        markdown_file.write(f"\t- {item}\n")
+        markdown_file.write(f"\t\t- {item}\n")
     # Write Tasks / Aufgaben to markdown
     markdown_file.write(f"- ## Aufgaben\n")
     for item in job_posting["Aufgaben_Beschreibung"]:
-        markdown_file.write(f"\t- {item}\n")
+        markdown_file.write(f"\t\t- {item}\n")
     for item in job_posting["Aufgaben"]:
-        markdown_file.write(f"\t- {item}\n")
+        markdown_file.write(f"\t\t- {item}\n")
     for item in job_posting["Aufgaben_Beschreibung_Teil2"]:
-        markdown_file.write(f"\t- {item}\n")
+        markdown_file.write(f"\t\t- {item}\n")
     # Write Benefits to markdown
-    markdown_file.write(f"- ## Benefits\n")
+    markdown_file.write(f"\t- ## Benefits\n")
     for item in job_posting["Benefits_Beschreibung"]:
-        markdown_file.write(f"\t- {item}\n")
+        markdown_file.write(f"\t\t- {item}\n")
     if job_posting["Benefits"] != []:
         for item in job_posting["Benefits"]:
-            markdown_file.write(f"\t- {item}\n")
-    else: markdown_file.write(f"\t- Nicht erfasst\n")
+            markdown_file.write(f"\t\t- {item}\n")
+    else: markdown_file.write(f"\t\t- Nicht erfasst\n")
     for item in job_posting["Benefits_Beschreibung_Teil2"]:
-        markdown_file.write(f"\t- {item}\n")
+        markdown_file.write(f"\t\t- {item}\n")
     markdown_file.write(f"- ## Bewerbungsprozess\n")
     if job_posting["Bewerbungsprozess"] != []:
         for item in job_posting["Bewerbungsprozess"]:
