@@ -10,3 +10,4 @@ cookies.json
 .env
 saved_job_ads
 standard_files
+*.ipynb
